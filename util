@@ -1,0 +1,83 @@
+"""
+File handler for reading and processing sales data files.
+Handles encoding issues and data validation.
+"""
+
+import os
+
+def read_sales_data(filename):
+    """
+    Reads sales data from file handling encoding issues.
+    
+    Args:
+        filename (str): Path to the sales data file
+    
+    Returns:
+        list: List of raw transaction lines
+    """
+    encodings = ['utf-8', 'latin-1', 'cp1252']
+    data = []
+    
+    try:
+        # Try different encodings
+        for encoding in encodings:
+            try:
+                with open(filename, 'r', encoding=encoding) as f:
+                    lines = f.readlines()
+                    # Skip header and empty lines
+                    data = [line.strip() for line in lines[1:] if line.strip()]
+                    print(f"✓ Successfully read file with {encoding} encoding")
+                    return data
+            except UnicodeDecodeError:
+                continue
+        
+        # If no encoding worked
+        if not data:
+            raise UnicodeDecodeError('all-codecs', b'', 0, 1, 'No suitable encoding found')
+    
+    except FileNotFoundError:
+        print(f"❌ Error: File '{filename}' not found!")
+        return []
+    except Exception as e:
+        print(f"❌ Error reading file: {str(e)}")
+        return []
+    
+    return data
+
+
+def save_enriched_data(enriched_transactions, filename='data/enriched_sales_data.txt'):
+    """
+    Saves enriched transactions to a pipe-delimited file.
+    
+    Args:
+        enriched_transactions (list): List of enriched transaction dictionaries
+        filename (str): Output file path
+    """
+    try:
+        # Create output directory if it doesn't exist
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        
+        if not enriched_transactions:
+            print(f"⚠ No data to save")
+            return
+        
+        with open(filename, 'w', encoding='utf-8') as f:
+            # Write header
+            headers = list(enriched_transactions[0].keys())
+            f.write('|'.join(headers) + '\n')
+            
+            # Write data rows
+            for transaction in enriched_transactions:
+                values = []
+                for key in headers:
+                    value = transaction.get(key, '')
+                    # Handle None values
+                    if value is None:
+                        value = 'None'
+                    values.append(str(value))
+                f.write('|'.join(values) + '\n')
+        
+        print(f"✓ Saved enriched data to: {filename}")
+    
+    except Exception as e:
+        print(f"❌ Error saving enriched data: {str(e)}")
